@@ -166,7 +166,6 @@ class TransformerModelLooped(TransformerModel):
             f_output = self._backbone(inputs_embeds=output * embeds)  # [B, 2n + 1, d]
         else:
             raise NotImplementedError
-        print(f_output.shape)
         return f_output
 
     def forward(self, xs, ys, n_loop_start, n_loops):

@@ -17,6 +17,9 @@ from main_utils import init_device, get_run_id, load_pretrained_model
 
 import wandb
 
+
+TRACK_WANDB = False
+
 torch.backends.cudnn.benchmark = True
 
 
@@ -85,15 +88,16 @@ def main(args, device):
     else:
         ctx = None
     ################################################
-    wandb.init(
-        dir=args.out_dir,
-        project=args.wandb.project,
-        config=args.__dict__,
-        notes=args.wandb.notes,
-        name=args.wandb.name,
-        mode="disabled" if args.debug_mode else "online",
-        resume=True,
-    )
+    if TRACK_WANDB:
+        wandb.init(
+            dir=args.out_dir,
+            project=args.wandb.project,
+            config=args.__dict__,
+            notes=args.wandb.notes,
+            name=args.wandb.name,
+            mode="disabled" if args.debug_mode else "online",
+            resume=True,
+        )
 
     torch.manual_seed(args.training.seed)
     model = build_model(args.model)
@@ -104,7 +108,7 @@ def main(args, device):
 
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.training.learning_rate, weight_decay=args.training.weight_decay)
-    scaler = torch.cuda.amp.GradScaler(enabled=(dtype == 'float16'))
+    scaler = torch.amp.GradScaler(enabled=(dtype == 'float16'))
     curriculum = Curriculum(args.training.curriculum)
 
     # Here the model load the pretrained model
@@ -171,21 +175,22 @@ def main(args, device):
                             raise NotImplementedError
                         point_wise_loss = (output - ys).square().mean(dim=0)
                         loss = point_wise_loss.mean()
-            wandb.log(
-                {
-                    "overall_loss": loss,
-                    "loop_times": curriculum.n_loops,
-                    "grad_norm/layerwise": grad_norm_dict,
-                    "grad_norm": total_norm,
-                    "pointwise/loss": dict(
-                        zip(point_wise_tags, point_wise_loss.detach().cpu().numpy())
-                    ),
-                    "n_points": curriculum.n_points,
-                    "n_dims": curriculum.n_dims_truncated,
-                    "lr": optimizer.param_groups[0]['lr'],
-                },
-                step=i,
-            )
+            if TRACK_WANDB:
+                wandb.log(
+                    {
+                        "overall_loss": loss,
+                        "loop_times": curriculum.n_loops,
+                        "grad_norm/layerwise": grad_norm_dict,
+                        "grad_norm": total_norm,
+                        "pointwise/loss": dict(
+                            zip(point_wise_tags, point_wise_loss.detach().cpu().numpy())
+                        ),
+                        "n_points": curriculum.n_points,
+                        "n_dims": curriculum.n_dims_truncated,
+                        "lr": optimizer.param_groups[0]['lr'],
+                    },
+                    step=i,
+                )
 
         curriculum.update()
 
@@ -211,7 +216,6 @@ if __name__ == "__main__":
     args = parser.parse_quinfig()
     print(f"Running with: {args}")
 
-    device = init_device(args)
     device = 'cuda'
 
     if args.debug_mode:
@@ -226,7 +230,8 @@ if __name__ == "__main__":
         os.makedirs(out_dir)
     args.out_dir = out_dir
     # add a timestamp here, if resumed, this will be the resumed time
-    args.wandb['timestamp'] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    if TRACK_WANDB:
+        args.wandb['timestamp'] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
 
     with open(os.path.join(out_dir, "config.yaml"), "w") as yaml_file:
         yaml.dump(args.__dict__, yaml_file, default_flow_style=False)

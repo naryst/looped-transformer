@@ -5,6 +5,7 @@ wandb:
 
 gpu:
     cuda: True
+    n_gpu: 4
 
 model:
     family: gpt2_loop
@@ -15,11 +16,12 @@ model:
     n_positions: 101
 
 training:
+    # add_inputs_embeds: True
     batch_size: 64
     task_name: linear_regression
     learning_rate: 0.0001
     weight_decay: 0.0
-    train_steps: 500000
+    train_steps: 5000
     save_every_steps: 1000
     keep_every_steps: 100000
     curriculum:

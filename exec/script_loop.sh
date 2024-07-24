@@ -4,13 +4,7 @@ n_gpu=4
 # Linear Regression  ###################################################################################################
 b=30
 T=15
-python scripts/train.py --config configs/base_loop.yaml \
-   --model.n_layer 1 \
-   --training.curriculum.loops.start $T \
-   --training.curriculum.loops.end $b \
-   --training.n_loop_window $T \
-   --wandb.name "LR_loop_L1_ends{$b}_T{$T}" \
-   --gpu.n_gpu $n_gpu
+python scripts/train.py --config configs/base_loop.yaml
 
 # Sparse Linear Regression  ############################################################################################
 b=20
