@@ -216,7 +216,7 @@ if __name__ == "__main__":
     args = parser.parse_quinfig()
     print(f"Running with: {args}")
 
-    device = 'cuda'
+    device = init_device(args)
 
     if args.debug_mode:
         args.out_dir = "./results/debug"

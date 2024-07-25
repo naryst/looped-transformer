@@ -35,23 +35,21 @@ from einops import rearrange, repeat, einsum
 
 
 @dataclass
-class ModelArgs:
-    d_model: int
-    n_layer: int
-    vocab_size: int  # По идее в моем сетапе это размерность вектора X
+class MambaConfig:
+    n_embed: int = 128
+    n_layer: int = 12
     d_state: int = 16
     expand: int = 2
     dt_rank: Union[int, str] = "auto"
     d_conv: int = 4
-    # pad_vocab_size_multiple: int = 8
     conv_bias: bool = True
     bias: bool = False
 
     def __post_init__(self):
-        self.d_inner = int(self.expand * self.d_model)
+        self.d_inner = int(self.expand * self.n_embed)
 
         if self.dt_rank == "auto":
-            self.dt_rank = math.ceil(self.d_model / 16)
+            self.dt_rank = math.ceil(self.n_embed / 16)
 
         # if self.vocab_size % self.pad_vocab_size_multiple != 0:
         #     self.vocab_size += (self.pad_vocab_size_multiple
@@ -59,21 +57,13 @@ class ModelArgs:
 
 
 class Mamba(nn.Module):
-    def __init__(self, args: ModelArgs):
+    def __init__(self, args: MambaConfig):
         """Full Mamba model."""
         super().__init__()
         self.args = args
-        self.embedding = nn.Linear(
-            args.vocab_size, args.d_model
-        )  # Поменял, чтобы поддреживались float числа из моего сетапа
-        self.layers = nn.ModuleList([ResidualBlock(args) for _ in range(args.n_layer)])
-        self.norm_f = RMSNorm(args.d_model)
 
-        self.lm_head = nn.Linear(args.d_model, args.vocab_size, bias=False)
-        self.lm_head.weight = torch.nn.Parameter(
-            torch.transpose(self.embedding.weight, 0, 1) # Trick для того, чтобы сходились размерности
-        )  # Tie output projection to embedding weights.
-        # See "Weight Tying" paper
+        self.layers = nn.ModuleList([ResidualBlock(args) for _ in range(args.n_layer)])
+        self.norm_f = RMSNorm(args.n_embed)
 
     def forward(self, input_ids):
         """
@@ -87,75 +77,24 @@ class Mamba(nn.Module):
             class MambaLMHeadModel, https://github.com/state-spaces/mamba/blob/main/mamba_ssm/models/mixer_seq_simple.py#L173
 
         """
-        x = self.embedding(input_ids)
+        x = input_ids
 
         for layer in self.layers:
             x = layer(x)
 
         x = self.norm_f(x)
-        logits = self.lm_head(x)
+        logits = x
 
         return logits
 
-    @staticmethod
-    def from_pretrained(pretrained_model_name: str):
-        """Load pretrained weights from HuggingFace into model.
-
-        Args:
-            pretrained_model_name: One of
-                * 'state-spaces/mamba-2.8b-slimpj'
-                * 'state-spaces/mamba-2.8b'
-                * 'state-spaces/mamba-1.4b'
-                * 'state-spaces/mamba-790m'
-                * 'state-spaces/mamba-370m'
-                * 'state-spaces/mamba-130m'
-
-        Returns:
-            model: Mamba model with weights loaded
-
-        """
-        from transformers.utils import WEIGHTS_NAME, CONFIG_NAME
-        from transformers.utils.hub import cached_file
-
-        def load_config_hf(model_name):
-            resolved_archive_file = cached_file(
-                model_name, CONFIG_NAME, _raise_exceptions_for_missing_entries=False
-            )
-            return json.load(open(resolved_archive_file))
-
-        def load_state_dict_hf(model_name, device=None, dtype=None):
-            resolved_archive_file = cached_file(
-                model_name, WEIGHTS_NAME, _raise_exceptions_for_missing_entries=False
-            )
-            return torch.load(
-                resolved_archive_file, weights_only=True, map_location="cpu", mmap=True
-            )
-
-        config_data = load_config_hf(pretrained_model_name)
-        args = ModelArgs(
-            d_model=config_data["d_model"],
-            n_layer=config_data["n_layer"],
-            vocab_size=config_data["vocab_size"],
-        )
-        model = Mamba(args)
-
-        state_dict = load_state_dict_hf(pretrained_model_name)
-        new_state_dict = {}
-        for key in state_dict:
-            new_key = key.replace("backbone.", "")
-            new_state_dict[new_key] = state_dict[key]
-        model.load_state_dict(new_state_dict)
-
-        return model
-
 
 class ResidualBlock(nn.Module):
-    def __init__(self, args: ModelArgs):
+    def __init__(self, args: MambaConfig):
         """Simple block wrapping Mamba block with normalization and residual connection."""
         super().__init__()
         self.args = args
         self.mixer = MambaBlock(args)
-        self.norm = RMSNorm(args.d_model)
+        self.norm = RMSNorm(args.n_embed)
 
     def forward(self, x):
         """
@@ -183,12 +122,12 @@ class ResidualBlock(nn.Module):
 
 
 class MambaBlock(nn.Module):
-    def __init__(self, args: ModelArgs):
+    def __init__(self, args: MambaConfig):
         """A single Mamba block, as described in Figure 3 in Section 3.4 in the Mamba paper [1]."""
         super().__init__()
         self.args = args
 
-        self.in_proj = nn.Linear(args.d_model, args.d_inner * 2, bias=args.bias)
+        self.in_proj = nn.Linear(args.n_embed, args.d_inner * 2, bias=args.bias)
 
         self.conv1d = nn.Conv1d(
             in_channels=args.d_inner,
@@ -210,7 +149,7 @@ class MambaBlock(nn.Module):
         A = repeat(torch.arange(1, args.d_state + 1), "n -> d n", d=args.d_inner)
         self.A_log = nn.Parameter(torch.log(A))
         self.D = nn.Parameter(torch.ones(args.d_inner))
-        self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=args.bias)
+        self.out_proj = nn.Linear(args.d_inner, args.n_embed, bias=args.bias)
 
     def forward(self, x):
         """Mamba block forward. This looks the same as Figure 3 in Section 3.4 in the Mamba paper [1].
