@@ -16,20 +16,22 @@ from funcy import merge
 
 gpu_schema = {
     "cuda": merge(tboolean, default(True)),
-    "n_gpu": merge(tinteger, required)  # which gpu device to use
+    "n_gpu": merge(tinteger, required),  # which gpu device to use
 }
 
 model_schema = {
-    "family": merge(tstring, allowed(["gpt2", "gpt2_loop", "gpt2_tying"])),
+    "family": merge(tstring, allowed(["gpt2", "gpt2_loop", "gpt2_tying", "mamba", "mamba_loop"])),
     "n_positions": merge(tinteger, required),  # maximum context length
     "n_dims": merge(tinteger, required),  # latent dimension
     "n_embd": merge(tinteger, required),
     "n_layer": merge(tinteger, required),
-    "n_head": merge(tinteger, required),
+    "n_head": merge(tinteger, default(-1)),
+    "d_state": merge(tinteger, default(16)),
+    "expand": merge(tinteger, default(2)),
+    "d_conv": merge(tinteger, default(4)),
     "pred_type": merge(tstring, default("regression")),
     "pretrained_path": merge(tstring, nullable, default(None)),
-    "loop_func": merge(tstring, default("z=f(x+z)"), allowed(
-        ["z=f(x+z)", "z=f(x*z)"])),
+    "loop_func": merge(tstring, default("z=f(x+z)"), allowed(["z=f(x+z)", "z=f(x*z)"])),
 }
 
 curriculum_base_schema = {
@@ -54,7 +56,7 @@ training_schema = {
     "use_ctx": merge(tboolean, default(False)),
     "batch_size": merge(tinteger, default(64)),
     "learning_rate": merge(tfloat, default(3e-4)),
-    "weight_decay": merge(tfloat, default(0.)),
+    "weight_decay": merge(tfloat, default(0.0)),
     "train_steps": merge(tinteger, default(1000)),
     "save_every_steps": merge(tinteger, default(1000)),  # how often to checkpoint
     "keep_every_steps": merge(tinteger, default(-1)),  # permanent checkpoints
@@ -71,7 +73,7 @@ wandb_schema = {
     "notes": merge(tstring, default("")),
     "name": merge(tstring, nullable, default(None)),
     "log_every_steps": merge(tinteger, default(10)),
-    "timestamp": merge(tstring, nullable)
+    "timestamp": merge(tstring, nullable),
 }
 
 schema = {

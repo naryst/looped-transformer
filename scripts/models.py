@@ -37,6 +37,29 @@ def build_model(conf):
             n_layer=conf.n_layer,
             n_head=conf.n_head,
         )
+    elif conf.family == "mamba":
+        model = MambaModel(
+            n_dims=conf.n_dims,
+            n_positions=conf.n_positions,
+            n_embd=conf.n_embd,
+            n_layer=conf.n_layer,
+            d_state=conf.d_state,
+            expand=conf.expand,
+            d_conv=conf.d_conv,
+            pred_type=conf.pred_type,
+        )
+    elif conf.family == "mamba_loop":
+        model = MambaModelLooped(
+            n_dims=conf.n_dims,
+            n_positions=conf.n_positions,
+            n_embd=conf.n_embd,
+            n_layer=conf.n_layer,
+            d_state=conf.d_state,
+            expand=conf.expand,
+            d_conv=conf.d_conv,
+            loop_func=conf.loop_func,
+            pred_type=conf.pred_type,
+        )
     else:
         raise NotImplementedError
 
@@ -251,14 +274,14 @@ class MambaModel(nn.Module):
         super(MambaModel, self).__init__()
         self.freq = 2
         self.ind = 0
-        configuration = MambaConfig()
-        configuration.n_layer = n_layer
-        configuration.d_state = d_state
-        configuration.n_embd = n_embd
-        configuration.expand = expand
-        configuration.d_conv = d_conv
-        configuration.bias = True
-        configuration.conv_bias = True
+        configuration = MambaConfig(
+            n_embd=n_embd,
+            n_layer=n_layer,
+            d_state=d_state,
+            expand=expand,
+            dt_rank="auto",
+            d_conv=d_conv,
+        )
         self.configuration = configuration
 
         self.n_positions = n_positions  # n = points in this setting
@@ -323,13 +346,87 @@ class MambaModel(nn.Module):
         return y
 
 
+class MambaModelLooped(MambaModel):
+    def __init__(
+        self,
+        n_dims,
+        n_positions,
+        n_embd=128,
+        n_layer=12,
+        d_state=16,
+        expand=2,
+        d_conv=4,
+        loop_func="z=f(x+z)",
+        pred_type="regression",
+    ):
+        super(MambaModelLooped, self).__init__(
+            n_dims, n_positions, n_embd, n_layer, d_state, expand, d_conv, pred_type
+        )
+        self.loop_func = loop_func
+
+    def f(self, output, embeds):
+        if self.loop_func == "z=f(x+z)":
+            f_output = self._backbone(inputs_embeds=output + embeds)  # [B, 2n, d]
+        elif self.loop_func == "z=f(x*z)":
+            f_output = self._backbone(inputs_embeds=output * embeds)  # [B, 2n, d]
+        else:
+            raise NotImplementedError
+        return f_output
+
+    def forward(self, xs, ys, n_loop_start, n_loops):
+        """
+        :param xs: [B, n, d]
+        :param ys: [B, n]
+        :param n_loop_start: int - T from the paper
+        :param n_loops: int - b from the paper
+        :return:
+        """
+        B, n, d_in = xs.shape
+        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n] -> [B, 2n, d_in]
+        embeds = self._read_in(zs)  # [B, 2n, d_in] -> [B, 2n, d]
+        if self.loop_func in ["z=f(x+z)"]:
+            output = torch.zeros_like(embeds)  # also of shape [B, 2n, d]
+        elif self.loop_func in ["z=f(x*z)"]:
+            output = torch.ones_like(embeds)  # also of shape [B, 2n, d]
+        else:
+            raise NotImplementedError(
+                "Currently we only support loop function z=f(x+z) or z=f(x*z)."
+            )
+
+        pred_list = []
+        for idx in range(n_loops):
+            if idx < n_loop_start:  # this will save memory when n_loops large.
+                with torch.no_grad():
+                    output = self.f(output, embeds)
+            else:
+                output = self.f(output, embeds)
+                prediction = self._read_out(output)  # [B, 2n, d] -> [B, 2n, 1]
+                if self._pred_type == "regression":
+                    y = prediction[:, self.ind :: self.freq, 0]
+                elif self._pred_type == "classification":
+                    y = prediction[:, self.ind :: self.freq]
+                else:
+                    raise NotImplementedError
+                pred_list.append(y)
+            if not self.print_flag:
+                print(idx)
+                self.print_flag = True
+
+        return pred_list
+
+
+##  TEST
 if __name__ == "__main__":
     dim = 10
     pos = 20
     batch = 3
+    T = 15
+    b = 30
     model = MambaModel(dim, pos)
     model2 = TransformerModel(dim, pos)
+    model3 = MambaModelLooped(dim, pos)
     xs = torch.rand((batch, pos, dim))
     ys = torch.rand((batch, pos))
     print(model(xs, ys))
     print(model2(xs, ys))
+    print(model3(xs, ys, T, b))

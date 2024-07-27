@@ -35,7 +35,7 @@ def calculate_gradient_norm(model):
 
 
 def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler):
-    if args.model.family in ['gpt2', 'gpt2_tying']:
+    if args.model.family in ['gpt2', 'gpt2_tying', 'mamba']:
         if ctx is not None:
             with ctx:
                 y_pred = model(xs, ys, add_inputs_embeds=args.training.add_inputs_embeds)  # [B, n]
@@ -45,7 +45,7 @@ def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler):
             y_pred = model(xs, ys, add_inputs_embeds=args.training.add_inputs_embeds)  # [B, n]
             # list of [B, n], length K + 1, get rid of the 0-th one
             loss = (ys - y_pred).square().mean()  # auto on both K and n (number of in context samples)
-    elif args.model.family in ['gpt2_loop']:
+    elif args.model.family in ['gpt2_loop', "mamba_loop"]:
         n_loops = curriculum.n_loops  # K
         if ctx is not None:
             with ctx:
