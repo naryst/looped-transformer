@@ -2,21 +2,23 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
+    name: looped_tf dynamic_masking p=0.7
 
 gpu:
     cuda: True
-    n_gpu: 1
+    n_gpu: 3
 
 model:
     family: gpt2_loop
     n_embd: 256
-    n_layer: 10
+    n_layer: 1
     n_head: 8
     n_dims: 20
     n_positions: 101
+    apply_input_mask: True
+    p: 0.7
 
 training:
-    # add_inputs_embeds: True
     batch_size: 64
     task_name: linear_regression
     learning_rate: 0.0001
@@ -34,7 +36,7 @@ training:
             start: 11
             end: 41
             inc: 2
-            interval: 5000
+            interval: 500
         loops:
             start: 20
             end: 350

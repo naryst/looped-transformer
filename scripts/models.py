@@ -28,6 +28,8 @@ def build_model(conf):
             n_head=conf.n_head,
             loop_func=conf.loop_func,
             pred_type=conf.pred_type,
+            apply_input_mask=conf.apply_input_mask,
+            p=conf.p,
         )
     elif conf.family == "gpt2_tying":
         model = TransformerModelTying(
@@ -190,6 +192,11 @@ class TransformerModelTying(TransformerModel):
         return y
 
 
+def dynamic_mask(tensor, p):
+    mask = torch.rand_like(tensor) >= p
+    return tensor * mask
+
+
 class TransformerModelLooped(TransformerModel):
     def __init__(
         self,
@@ -200,15 +207,25 @@ class TransformerModelLooped(TransformerModel):
         n_head=4,
         loop_func="z=f(x+z)",
         pred_type="regression",
+        apply_input_mask=False,
+        p=0.15,
     ):
         super(TransformerModelLooped, self).__init__(
             n_dims, n_positions, n_embd, n_layer, n_head, pred_type
         )
         self.loop_func = loop_func
+        self.p = p
+        self.apply_input_mask = apply_input_mask
 
     def f(self, output, embeds):
-        # print(output)
-        # print(embeds)
+        # apply dynamic masking on the input tensor
+        # if loop function is addition -> zero some elements
+        # if loop function is multiplixation -> set some elements to 1 (not sure)
+        if self.apply_input_mask:
+            embeds = dynamic_mask(embeds, self.p)
+            if self.loop_func == "z=f(x*z)":
+                embeds = torch.where(embeds == 0, torch.ones_like(embeds), embeds)
+
         if self.loop_func == "z=f(x+z)":
             f_output = self._backbone(inputs_embeds=output + embeds)  # [B, 2n + 1, d]
         elif self.loop_func == "z=f(x*z)":

@@ -32,6 +32,8 @@ model_schema = {
     "pred_type": merge(tstring, default("regression")),
     "pretrained_path": merge(tstring, nullable, default(None)),
     "loop_func": merge(tstring, default("z=f(x+z)"), allowed(["z=f(x+z)", "z=f(x*z)"])),
+    "apply_input_mask" : merge(tboolean, default(False)),
+    "p" : merge(tfloat, default(0.15))
 }
 
 curriculum_base_schema = {

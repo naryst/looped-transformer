@@ -2,10 +2,11 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
+    name: mamba hidden_state=768 Wnew_curriculum
 
 gpu:
     cuda: True
-    n_gpu: 2
+    n_gpu: 0
 
 model:
     family: mamba_loop
@@ -15,11 +16,10 @@ model:
     n_dims: 20
     n_positions: 101
     d_conv: 4
-    d_state: 128
-    expand: 4
+    d_state: 16
+    expand: 3
 
 training:
-    # add_inputs_embeds: True
     batch_size: 64
     task_name: linear_regression
     learning_rate: 0.0001
@@ -37,7 +37,7 @@ training:
             start: 11
             end: 41
             inc: 2
-            interval: 5000
+            interval: 500
         loops:
             start: 20
             end: 350
