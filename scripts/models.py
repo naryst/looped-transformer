@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from nano_gpt import GPT2Model, GPT2Config, LayerNorm
-from mamba import MambaConfig, Mamba
+from mambaV2 import MambaConfig, Mamba
 import lovely_tensors as lt
 
 
@@ -222,6 +222,7 @@ class TransformerModelLooped(TransformerModel):
         # if loop function is addition -> zero some elements
         # if loop function is multiplixation -> set some elements to 1 (not sure)
         if self.apply_input_mask:
+            print('masking')
             embeds = dynamic_mask(embeds, self.p)
             if self.loop_func == "z=f(x*z)":
                 embeds = torch.where(embeds == 0, torch.ones_like(embeds), embeds)
@@ -439,11 +440,11 @@ if __name__ == "__main__":
     batch = 3
     T = 15
     b = 30
-    model = MambaModel(dim, pos)
-    model2 = TransformerModel(dim, pos)
-    model3 = MambaModelLooped(dim, pos)
-    xs = torch.rand((batch, pos, dim))
-    ys = torch.rand((batch, pos))
-    print(model(xs, ys))
-    print(model2(xs, ys))
+    # model = MambaModel(dim, pos)
+    # model2 = TransformerModel(dim, pos)
+    model3 = MambaModelLooped(dim, pos).to('cuda')
+    xs = torch.rand((batch, pos, dim), device='cuda')
+    ys = torch.rand((batch, pos), device='cuda')
+    # print(model(xs, ys))
+    # print(model2(xs, ys))
     print(model3(xs, ys, T, b))

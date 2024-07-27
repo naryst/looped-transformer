@@ -2,7 +2,7 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: mamba hidden_state=768 Wnew_curriculum
+    name: mamba 
 
 gpu:
     cuda: True
@@ -22,7 +22,7 @@ model:
 training:
     batch_size: 64
     task_name: linear_regression
-    learning_rate: 0.0001
+    learning_rate: 0.0003
     weight_decay: 0.0
     train_steps: 10000
     save_every_steps: 1000

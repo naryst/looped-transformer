@@ -2,11 +2,11 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: looped_tf dynamic_masking p=0.7
+    name: looped_tf 1 layer
 
 gpu:
     cuda: True
-    n_gpu: 3
+    n_gpu: 0
 
 model:
     family: gpt2_loop
@@ -15,7 +15,7 @@ model:
     n_head: 8
     n_dims: 20
     n_positions: 101
-    apply_input_mask: True
+    apply_input_mask: False
     p: 0.7
 
 training:
