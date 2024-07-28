@@ -3,6 +3,7 @@ import torch.nn as nn
 from nano_gpt import GPT2Model, GPT2Config, LayerNorm
 from mamba import MambaConfig, Mamba
 import lovely_tensors as lt
+import math
 
 
 lt.monkey_patch()
@@ -30,6 +31,10 @@ def build_model(conf):
             pred_type=conf.pred_type,
             apply_input_mask=conf.apply_input_mask,
             p=conf.p,
+            truncate_state=conf.truncate_state,
+            p_state=conf.p_state,
+            fixed_truncate=conf.fixed_truncate,
+            tokens_to_trunc=conf.tokens_to_trunc,
         )
     elif conf.family == "gpt2_tying":
         model = TransformerModelTying(
@@ -209,6 +214,10 @@ class TransformerModelLooped(TransformerModel):
         pred_type="regression",
         apply_input_mask=False,
         p=0.15,
+        truncate_state=False,
+        p_state=0.3, # part of the output state to be nulled 
+        fixed_truncate=False, # use fixed truncation instead of vector portion
+        tokens_to_trunc=4,
     ):
         super(TransformerModelLooped, self).__init__(
             n_dims, n_positions, n_embd, n_layer, n_head, pred_type
@@ -216,16 +225,32 @@ class TransformerModelLooped(TransformerModel):
         self.loop_func = loop_func
         self.p = p
         self.apply_input_mask = apply_input_mask
+        self.truncate_state = truncate_state
+        self.p_state = p_state
+        self.fixed_truncate = fixed_truncate
+        self.tokens_to_trunc = tokens_to_trunc
 
     def f(self, output, embeds):
+        """
+        :param output: output state from the prev loop iteration [B, 2n, d]
+        :param embeds: embeddings of the input [B, 2n, d]
+        :return updated output state
+        """
         # apply dynamic masking on the input tensor
         # if loop function is addition -> zero some elements
         # if loop function is multiplixation -> set some elements to 1 (not sure)
         if self.apply_input_mask:
-            print('masking')
             embeds = dynamic_mask(embeds, self.p)
             if self.loop_func == "z=f(x*z)":
                 embeds = torch.where(embeds == 0, torch.ones_like(embeds), embeds)
+
+        if self.truncate_state:
+            B, n, d = output.shape
+            if not self.fixed_truncate:
+                self.tokens_to_trunc = math.ceil(n * self.p_state)
+            mask = torch.ones((B, n, d), dtype=output.dtype, device=output.device)
+            mask[:, :self.tokens_to_trunc, :] = 0
+            output = output * mask
 
         if self.loop_func == "z=f(x+z)":
             f_output = self._backbone(inputs_embeds=output + embeds)  # [B, 2n, d]

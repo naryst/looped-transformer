@@ -20,7 +20,9 @@ gpu_schema = {
 }
 
 model_schema = {
-    "family": merge(tstring, allowed(["gpt2", "gpt2_loop", "gpt2_tying", "mamba", "mamba_loop"])),
+    "family": merge(
+        tstring, allowed(["gpt2", "gpt2_loop", "gpt2_tying", "mamba", "mamba_loop"])
+    ),
     "n_positions": merge(tinteger, required),  # maximum context length
     "n_dims": merge(tinteger, required),  # latent dimension
     "n_embd": merge(tinteger, required),
@@ -32,8 +34,12 @@ model_schema = {
     "pred_type": merge(tstring, default("regression")),
     "pretrained_path": merge(tstring, nullable, default(None)),
     "loop_func": merge(tstring, default("z=f(x+z)"), allowed(["z=f(x+z)", "z=f(x*z)"])),
-    "apply_input_mask" : merge(tboolean, default(False)),
-    "p" : merge(tfloat, default(0.15))
+    "apply_input_mask": merge(tboolean, default(False)),
+    "p": merge(tfloat, default(0)),
+    "truncate_state": merge(tboolean, default(False)),
+    "p_state": merge(tfloat, default(0.15)),
+    "fixed_truncate": merge(tboolean, default(False)),
+    "tokens_to_trunc": merge(tinteger, default(4)),
 }
 
 curriculum_base_schema = {

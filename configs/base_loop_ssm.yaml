@@ -2,14 +2,14 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: mamba unlooped test
+    name: mamba_conv=20
 
 gpu:
     cuda: True
     n_gpu: 0
 
 model:
-    family: mamba
+    family: mamba_loop
     n_embd: 256
     n_layer: 1
     # n_head: 8

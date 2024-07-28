@@ -2,7 +2,7 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: looped_tf 1 layer test
+    name: looped_tf fixed-trunc=6
 
 gpu:
     cuda: True
@@ -16,7 +16,11 @@ model:
     n_dims: 5
     n_positions: 101
     apply_input_mask: False
-    p: 0.7
+    p: 0
+    truncate_state: True
+    p_state: 0.2
+    fixed_truncate: True
+    tokens_to_trunc: 4
 
 training:
     batch_size: 64
