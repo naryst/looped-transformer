@@ -30,7 +30,7 @@ See Figure 3 of the paper (page 8) for a visual representation of a MambaBlock.
 
 @dataclass
 class MambaConfig:
-    n_embd: int # D
+    n_embd: int # D d_model intially
     n_layer: int
     dt_rank: Union[int, str] = 'auto'
     d_state: int = 16 # N in paper/comments
@@ -431,3 +431,4 @@ class RMSNorm(nn.Module):
             return output * self.weight
         else:
             return output
+    

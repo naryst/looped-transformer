@@ -2,7 +2,7 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: looped_tf 1 layer
+    name: looped_tf 1 layer test
 
 gpu:
     cuda: True
@@ -13,7 +13,7 @@ model:
     n_embd: 256
     n_layer: 1
     n_head: 8
-    n_dims: 20
+    n_dims: 5
     n_positions: 101
     apply_input_mask: False
     p: 0.7

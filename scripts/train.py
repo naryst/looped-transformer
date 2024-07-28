@@ -17,7 +17,7 @@ from main_utils import init_device, get_run_id, load_pretrained_model
 import wandb
 
 
-TRACK_WANDB = False
+TRACK_WANDB = True
 
 torch.backends.cudnn.benchmark = True
 
@@ -174,8 +174,8 @@ def main(args, device):
             )
 
             real_task = task_sampler()
-            xs, ys = real_task.xs.float(), real_task.ys.float()
 
+            xs, ys = real_task.xs.float(), real_task.ys.float()
         loss, output, total_norm, grad_norm_dict = train_step(
             args, curriculum, model, xs, ys, optimizer, ctx, scaler
         )

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from nano_gpt import GPT2Model, GPT2Config, LayerNorm
-from mambaV2 import MambaConfig, Mamba
+from mamba import MambaConfig, Mamba
 import lovely_tensors as lt
 
 
@@ -110,7 +110,7 @@ class TransformerModel(nn.Module):
         """
         :param xs_b: shape [B, n, d_in]
         :param ys_b: shape [B, n]
-        :return: shape [B, 2n, d_in + 1]
+        :return: shape [B, 2n, d_in]
         """
         B, n, d = xs_b.shape
         device = xs_b.device
@@ -169,7 +169,7 @@ class TransformerModelTying(TransformerModel):
         self.print_flag = False
 
     def f(self, output):
-        f_output = self._backbone(inputs_embeds=output)  # [B, 2n + 1, d]
+        f_output = self._backbone(inputs_embeds=output)  # [B, 2n, d]
         return f_output
 
     def forward(self, xs, ys, add_inputs_embeds):
@@ -180,7 +180,7 @@ class TransformerModelTying(TransformerModel):
         :param n_loops: int
         :return:
         """
-        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]
+        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], -> [B, 2n, d_in + 1]
         embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]
         output = embeds  # also of shape [B, 2n, d]
 
@@ -228,9 +228,9 @@ class TransformerModelLooped(TransformerModel):
                 embeds = torch.where(embeds == 0, torch.ones_like(embeds), embeds)
 
         if self.loop_func == "z=f(x+z)":
-            f_output = self._backbone(inputs_embeds=output + embeds)  # [B, 2n + 1, d]
+            f_output = self._backbone(inputs_embeds=output + embeds)  # [B, 2n, d]
         elif self.loop_func == "z=f(x*z)":
-            f_output = self._backbone(inputs_embeds=output * embeds)  # [B, 2n + 1, d]
+            f_output = self._backbone(inputs_embeds=output * embeds)  # [B, 2n, d]
         else:
             raise NotImplementedError
         return f_output
@@ -244,8 +244,8 @@ class TransformerModelLooped(TransformerModel):
         :return:
         """
         B, n, d_in = xs.shape
-        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]
-        embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]
+        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n] -> [B, 2n, d_in]
+        embeds = self._read_in(zs)  # [B, 2n, d_in] -> [B, 2n, d]
         if self.loop_func in ["z=f(x+z)"]:
             output = torch.zeros_like(embeds)  # also of shape [B, 2n, d]
         elif self.loop_func in ["z=f(x*z)"]:
