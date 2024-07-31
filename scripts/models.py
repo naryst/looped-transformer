@@ -2,11 +2,9 @@ import torch
 import torch.nn as nn
 from nano_gpt import GPT2Model, GPT2Config, LayerNorm
 from mamba import MambaConfig, Mamba
-import lovely_tensors as lt
 import math
 
 
-lt.monkey_patch()
 MAX_NUM_CLASS = 2  # for openML classification task
 
 
@@ -141,8 +139,8 @@ class TransformerModel(nn.Module):
         """
 
         B, n, d_in = xs.shape
-        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]
-        embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]
+        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n]-> [B, 2n, d_in]
+        embeds = self._read_in(zs)  # [B, 2n, d_in] -> [B, 2n, d]
 
         f_output = self._backbone(
             inputs_embeds=embeds,
@@ -213,10 +211,10 @@ class TransformerModelLooped(TransformerModel):
         loop_func="z=f(x+z)",
         pred_type="regression",
         apply_input_mask=False,
-        p=0.15,
+        p=0.15, # part of the input to be masked
         truncate_state=False,
-        p_state=0.3, # part of the output state to be nulled 
-        fixed_truncate=False, # use fixed truncation instead of vector portion
+        p_state=0.3,  # part of the output state to be masked
+        fixed_truncate=False,  # use fixed truncation instead of vector portion
         tokens_to_trunc=4,
     ):
         super(TransformerModelLooped, self).__init__(
@@ -244,12 +242,14 @@ class TransformerModelLooped(TransformerModel):
             if self.loop_func == "z=f(x*z)":
                 embeds = torch.where(embeds == 0, torch.ones_like(embeds), embeds)
 
+        # mask part of the prev output state
         if self.truncate_state:
             B, n, d = output.shape
+            # number of tokens to mask with dynamic masking
             if not self.fixed_truncate:
                 self.tokens_to_trunc = math.ceil(n * self.p_state)
             mask = torch.ones((B, n, d), dtype=output.dtype, device=output.device)
-            mask[:, :self.tokens_to_trunc, :] = 0
+            mask[:, : self.tokens_to_trunc, :] = 0
             output = output * mask
 
         if self.loop_func == "z=f(x+z)":
@@ -372,8 +372,8 @@ class MambaModel(nn.Module):
         """
 
         B, n, d_in = xs.shape
-        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]
-        embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]
+        zs = self._combine(xs, ys)  # [B, n, d_in], [B, n] -> [B, 2n, d_in]
+        embeds = self._read_in(zs)  # [B, 2n, d_in] -> [B, 2n, d]
 
         f_output = self._backbone(
             embeds,
@@ -465,11 +465,11 @@ if __name__ == "__main__":
     batch = 3
     T = 15
     b = 30
-    # model = MambaModel(dim, pos)
-    # model2 = TransformerModel(dim, pos)
-    model3 = MambaModelLooped(dim, pos).to('cuda')
-    xs = torch.rand((batch, pos, dim), device='cuda')
-    ys = torch.rand((batch, pos), device='cuda')
-    # print(model(xs, ys))
-    # print(model2(xs, ys))
+    model = MambaModel(dim, pos)
+    model2 = TransformerModel(dim, pos)
+    model3 = MambaModelLooped(dim, pos).to("cuda")
+    xs = torch.rand((batch, pos, dim), device="cuda")
+    ys = torch.rand((batch, pos), device="cuda")
+    print(model(xs, ys))
+    print(model2(xs, ys))
     print(model3(xs, ys, T, b))

@@ -2,7 +2,7 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: looped_tf 7 layer 
+    name: looped_tf 
 
 gpu:
     cuda: True
@@ -11,7 +11,7 @@ gpu:
 model:
     family: gpt2_loop
     n_embd: 256
-    n_layer: 7
+    n_layer: 1
     n_head: 8
     n_dims: 20
     n_positions: 101
@@ -37,13 +37,13 @@ training:
             inc: 1
             interval: 5000
         points:
-            start: 40
+            start: 11
             end: 40
             inc: 2
             interval: 500
         loops:
             start: 20
-            end: 20
+            end: 350
             inc: 2
             interval: 500
     n_loop_window: 20

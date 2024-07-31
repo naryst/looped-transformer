@@ -13,11 +13,10 @@ from schema import schema
 from models import build_model
 from tasks import get_task_sampler
 from main_utils import init_device, get_run_id, load_pretrained_model
-# from eval import get_run_metrics
 import wandb
 
 
-TRACK_WANDB = True
+TRACK_WANDB = False
 
 torch.backends.cudnn.benchmark = True
 
@@ -116,7 +115,6 @@ def main(args, device):
 
     torch.manual_seed(args.training.seed)
     model = build_model(args.model)
-    # model = torch.compile(model)
 
     model.to(device)
     model.train()

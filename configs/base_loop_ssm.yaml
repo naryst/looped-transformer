@@ -2,7 +2,7 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: mamba_conv=20
+    name: mamba_looped
 
 gpu:
     cuda: True
