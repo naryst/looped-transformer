@@ -2,7 +2,7 @@ wandb:
     project: Lets_Loop2
     notes:
     log_every_steps: 100
-    name: looped_tf fixed-trunc=6
+    name: looped_tf 7 layer 
 
 gpu:
     cuda: True
@@ -11,15 +11,15 @@ gpu:
 model:
     family: gpt2_loop
     n_embd: 256
-    n_layer: 1
+    n_layer: 7
     n_head: 8
-    n_dims: 5
+    n_dims: 20
     n_positions: 101
     apply_input_mask: False
     p: 0
-    truncate_state: True
+    truncate_state: False
     p_state: 0.2
-    fixed_truncate: True
+    fixed_truncate: False
     tokens_to_trunc: 4
 
 training:
@@ -37,13 +37,13 @@ training:
             inc: 1
             interval: 5000
         points:
-            start: 11
-            end: 41
+            start: 40
+            end: 40
             inc: 2
             interval: 500
         loops:
             start: 20
-            end: 350
+            end: 20
             inc: 2
             interval: 500
     n_loop_window: 20
