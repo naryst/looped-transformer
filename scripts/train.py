@@ -16,7 +16,7 @@ from main_utils import init_device, get_run_id, load_pretrained_model
 import wandb
 
 
-TRACK_WANDB = False
+TRACK_WANDB = True
 
 torch.backends.cudnn.benchmark = True
 

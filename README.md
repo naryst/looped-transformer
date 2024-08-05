@@ -283,3 +283,22 @@ n_loop_window: 20
 ## 6. Приложения
 
 #### Инструкции по запуску кода:
+
+Для настройки енвайромента:
+
+```shell
+conda env create -f environment.yml
+conda activate loop_tf
+```
+
+Для запуска эксперимента:
+```shell
+python scripts/train.py --config configs/base_loop.yaml
+```
+
+Конфигурация для процесса обучения настраивается через yaml конфиги из папки `configs`. В ней уже представлено 4 варианта конфигурации для обучения:
+
+* `base_loop_ssm` - для обучения Looped Mamba
+* `base_loop` - для обучения Looped Transformer
+* `base` - Для обучения обычного Transformer'a 
+* `base_ssm` - Для обучения обычной Mamba

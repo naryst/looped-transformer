@@ -1,27 +1,23 @@
-wandb:
-    project: Lets_Loop2
-    notes:
-    log_every_steps: 100
-    name: looped_tf 
-
 gpu:
-    cuda: True
+    cuda: true
     n_gpu: 0
 
 model:
-    loop_func: "z=f(x+z)"
-    family: gpt2_loop
+    family: mamba
     n_embd: 256
     n_layer: 1
-    n_head: 8
+    # n_head: 8
     n_dims: 20
     n_positions: 101
-    apply_input_mask: False
-    p: 0
-    truncate_state: False
-    p_state: 0.2
-    fixed_truncate: False
-    tokens_to_trunc: 4
+    d_conv: 20
+    d_state: 16
+    expand: 3
+
+wandb:
+    name: unloopedMambaV2
+    notes: ""
+    project: Lets_Loop2
+    log_every_steps: 100
 
 training:
     batch_size: 64
@@ -43,8 +39,8 @@ training:
             inc: 2
             interval: 500
         loops:
-            start: 20
-            end: 350
+            start: 1
+            end: 1
             inc: 2
             interval: 500
     n_loop_window: 20
