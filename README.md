@@ -302,3 +302,8 @@ python scripts/train.py --config configs/base_loop.yaml
 * `base_loop` - для обучения Looped Transformer
 * `base` - Для обучения обычного Transformer'a 
 * `base_ssm` - Для обучения обычной Mamba
+
+#### Дополнительные материалы:
+
+* [Проект на wandb, в рамках которого трекались все эксперименты и собрались метрики](https://wandb.ai/nikitasergeev692/Lets_Loop2)
+* [Репорт, в котором собраны все основные результаты экспериментов](https://wandb.ai/nikitasergeev692/Lets_Loop2/reports/Looped-Transformer--Vmlldzo4ODgwNDUy)
